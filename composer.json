@@ -1,0 +1,42 @@
+{
+  "name": "alireaza/dependency-injection",
+  "version": "1.0.0",
+  "type": "library",
+  "license": "MIT",
+  "description": "The Dependency Injection Container.",
+  "keywords": [
+    "alireaza",
+    "dependency-injection",
+    "di",
+    "psr-11",
+    "dic",
+    "container"
+  ],
+  "homepage": "https://gitlab.com/AliReaza/dependency-injection",
+  "authors": [
+    {
+      "name": "Mohammad Ali Ghorbani Delijani",
+      "homepage": "https://www.alireaza.ir",
+      "role": "Developer",
+      "email": "alireazamagh@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^8.0.0",
+    "alireaza/container": "1.0.0",
+    "alireaza/singleton": "1.0.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "9.5.9"
+  },
+  "autoload": {
+    "psr-4": {
+      "AliReaza\\DependencyInjection\\": "./src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "AliReaza\\Tests\\DependencyInjection\\": "./tests/"
+    }
+  }
+}
