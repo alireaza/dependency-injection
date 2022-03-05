@@ -12,26 +12,28 @@ use PHPUnit\Framework\TestCase;
 
 class DependencyInjectionContainerBuilderTest extends TestCase
 {
-    public function test_When_create_new_DependencyInjectionContainerBuilder_Expect_DependencyInjectionContainerBuilder_instance_of_SingletonInterface()
+    public function test_When_create_new_DependencyInjectionContainerBuilder_Expect_DependencyInjectionContainerBuilder_instance_of_SingletonInterface(): void
     {
         $this->expectError();
-        $this->assertInstanceOf(SingletonInterface::class, new DependencyInjectionContainerBuilder);
+
+        $this->assertInstanceOf(SingletonInterface::class, new DependencyInjectionContainerBuilder());
     }
 
-    public function test_When_create_new_DependencyInjectionContainerBuilder_Expect_DependencyInjectionContainerBuilder_instance_of_AbstractSingleton()
+    public function test_When_create_new_DependencyInjectionContainerBuilder_Expect_DependencyInjectionContainerBuilder_instance_of_AbstractSingleton(): void
     {
         $this->expectError();
-        $this->assertInstanceOf(AbstractSingleton::class, new DependencyInjectionContainerBuilder);
+
+        $this->assertInstanceOf(AbstractSingleton::class, new DependencyInjectionContainerBuilder());
     }
 
-    public function test_When_create_new_DependencyInjectionContainerBuilder_Expect_throw_exception_for_protected_constructor()
+    public function test_When_create_new_DependencyInjectionContainerBuilder_Expect_throw_exception_for_protected_constructor(): void
     {
         $this->expectErrorMessageMatches('/^Call to protected/');
 
-        new DependencyInjectionContainerBuilder;
+        new DependencyInjectionContainerBuilder();
     }
 
-    public function test_When_extend_DependencyInjectionContainerBuilder_Expect_throw_exception_for_protected_constructor()
+    public function test_When_extend_DependencyInjectionContainerBuilder_Expect_throw_exception_for_protected_constructor(): void
     {
         $this->expectErrorMessageMatches('/^Call to protected/');
 
@@ -39,7 +41,7 @@ class DependencyInjectionContainerBuilderTest extends TestCase
         };
     }
 
-    public function test_When_extend_DependencyInjectionContainerBuilder_with_public_constructor_with_arguments_Expect_throw_exception_ArgumentCountError()
+    public function test_When_extend_DependencyInjectionContainerBuilder_with_public_constructor_with_arguments_Expect_throw_exception_ArgumentCountError(): void
     {
         $this->expectErrorMessageMatches('/^Too few arguments to function/');
 
@@ -50,13 +52,14 @@ class DependencyInjectionContainerBuilderTest extends TestCase
         };
     }
 
-    public function test_When_get_instance_from_a_DependencyInjectionContainerBuilder_Expect_instance_of_DependencyInjectionContainer()
+    public function test_When_get_instance_from_a_DependencyInjectionContainerBuilder_Expect_instance_of_DependencyInjectionContainer(): void
     {
         $this->expectError();
-        $this->assertInstanceOf(DependencyInjectionContainer::class, new DependencyInjectionContainerBuilder);
+
+        $this->assertInstanceOf(DependencyInjectionContainer::class, new DependencyInjectionContainerBuilder());
     }
 
-    public function test_When_multiple_times_get_instance_from_a_DependencyInjectionContainerBuilder_Expect_all_instances_must_same()
+    public function test_When_multiple_times_get_instance_from_a_DependencyInjectionContainerBuilder_Expect_all_instances_must_same(): void
     {
         $obj1 = DependencyInjectionContainerBuilder::getInstance();
         $obj2 = DependencyInjectionContainerBuilder::getInstance();

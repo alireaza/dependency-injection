@@ -6,38 +6,34 @@ namespace AliReaza\Tests\DependencyInjection\Unit;
 
 use AliReaza\Container\NotFoundException;
 use AliReaza\DependencyInjection\Container;
-use Closure;
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
 use TypeError;
 
-/**
- * Class ContainerTest
- *
- * @package AliReaza\Tests\DependencyInjection\Unit
- */
 class ContainerTest extends TestCase
 {
-    public function test_When_create_new_Container_Expect_Container_instance_of_ContainerInterface()
+    public function test_When_create_new_Container_Expect_Container_instance_of_ContainerInterface(): void
     {
-        $this->assertInstanceOf(ContainerInterface::class, new Container);
+        $this->assertInstanceOf(ContainerInterface::class, new Container());
     }
 
-    public function test_When_create_new_Container_Expect_containers_property_must_array_and_empty()
+    public function test_When_create_new_Container_Expect_containers_property_must_array_and_empty(): void
     {
         $container = new Container();
 
-        $this->assertTrue(is_array($container->containers) && empty($container->containers));
+        $this->assertIsArray($container->containers);
+
+        $this->assertEmpty($container->containers);
     }
 
-    public function test_When_container_ID_not_found_Expect_has_method_return_false()
+    public function test_When_container_ID_not_found_Expect_has_method_return_false(): void
     {
         $container = new Container();
 
         $this->assertFalse($container->has('unregistered'));
     }
 
-    public function test_When_container_ID_not_found_Expect_get_method_throw_NotFoundException()
+    public function test_When_container_ID_not_found_Expect_get_method_throw_NotFoundException(): void
     {
         $container = new Container();
 
@@ -46,7 +42,7 @@ class ContainerTest extends TestCase
         $container->get('unregistered');
     }
 
-    public function test_When_adding_a_container_Expect_has_method_return_true_for_the_exact_same_container()
+    public function test_When_set_a_container_with_containers_property_Expect_has_method_return_true_for_the_exact_same_container(): void
     {
         $container = new Container();
 
@@ -55,7 +51,188 @@ class ContainerTest extends TestCase
         $this->assertTrue($container->has('foo'));
     }
 
-    public function test_When_non_string_given_to_set_method_Expect_throw_ErrorException()
+    public function test_When_set_a_string_container_with_containers_property_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->containers['foo'] = 'bar';
+
+        $this->assertSame('bar', $container->get('foo'));
+    }
+
+    public function test_When_set_a_integer_container_with_containers_property_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->containers['foo'] = 1992;
+
+        $this->assertSame(1992, $container->get('foo'));
+    }
+
+    public function test_When_set_a_float_container_with_containers_property_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->containers['foo'] = 10.27;
+
+        $this->assertSame(10.27, $container->get('foo'));
+    }
+
+    public function test_When_set_a_boolean_container_with_containers_property_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->containers['foo'] = true;
+
+        $this->assertSame(true, $container->get('foo'));
+    }
+
+    public function test_When_set_a_array_container_with_containers_property_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->containers['foo'] = ['bar'];
+
+        $this->assertIsArray($container->get('foo'));
+
+        $this->assertSame('bar', $container->get('foo')[0]);
+    }
+
+    public function test_When_set_a_callable_container_with_containers_property_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->containers['foo'] = function (): string {
+            return 'bar';
+        };
+
+        $this->assertIsCallable($container->get('foo'));
+
+        $this->assertSame('bar', call_user_func($container->get('foo')));
+    }
+
+    public function test_When_set_a_class_container_with_containers_property_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->containers['foo'] = new class {
+            public function bar(): string
+            {
+                return 'baz';
+            }
+        };
+
+        $this->assertIsObject($container->get('foo'));
+
+        $this->assertSame('baz', $container->get('foo')->bar());
+    }
+
+    public function test_When_set_and_unset_a_container_with_containers_property_Expect_has_method_return_false(): void
+    {
+        $container = new Container();
+
+        $container->containers['foo'] = 'bar';
+        unset($container->containers['foo']);
+
+        $this->assertFalse($container->has('foo'));
+    }
+
+    public function test_When_set_and_unset_a_container_with_containers_property_Expect_get_method_throw_NotFoundException(): void
+    {
+        $container = new Container();
+
+        $this->expectException(NotFoundException::class);
+
+        $container->containers['foo'] = 'bar';
+        unset($container->containers['foo']);
+
+        $container->get('foo');
+    }
+
+    public function test_When_set_a_container_with_set_method_Expect_has_method_return_true_for_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->set('foo', 'bar');
+
+        $this->assertTrue($container->has('foo'));
+    }
+
+    public function test_When_set_a_string_container_with_set_method_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->set('foo', 'bar');
+
+        $this->assertSame('bar', $container->get('foo'));
+    }
+
+    public function test_When_set_a_integer_container_with_set_method_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->set('foo', 1992);
+
+        $this->assertSame(1992, $container->get('foo'));
+    }
+
+    public function test_When_set_a_float_container_with_set_method_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->set('foo', 10.27);
+
+        $this->assertSame(10.27, $container->get('foo'));
+    }
+
+    public function test_When_set_a_boolean_container_with_set_method_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->set('foo', true);
+
+        $this->assertSame(true, $container->get('foo'));
+    }
+
+    public function test_When_set_a_array_container_with_set_method_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->set('foo', ['bar']);
+
+        $this->assertIsArray($container->get('foo'));
+
+        $this->assertSame('bar', $container->get('foo')[0]);
+    }
+
+    public function test_When_set_a_callable_container_with_set_method_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->set('foo', function (): string {
+            return 'bar';
+        });
+
+        $this->assertIsCallable($container->get('foo'));
+
+        $this->assertSame('bar', call_user_func($container->get('foo')));
+    }
+
+    public function test_When_set_a_class_container_with_set_method_Expect_get_method_return_the_exact_same_container(): void
+    {
+        $container = new Container();
+
+        $container->set('foo', new class {
+            public function bar(): string
+            {
+                return 'baz';
+            }
+        });
+
+        $this->assertSame('baz', $container->get('foo')->bar());
+    }
+
+    public function test_When_set_a_container_with_set_method_and_non_string_ID_Expect_throw_ErrorException(): void
     {
         $container = new Container();
 
@@ -64,82 +241,7 @@ class ContainerTest extends TestCase
         $container->set(123, 'bar');
     }
 
-    public function test_When_set_a_container_Expect_has_method_return_true_for_the_exact_same_container()
-    {
-        $container = new Container();
-
-        $container->set('foo', 'bar');
-
-        $this->assertTrue($container->has('foo'));
-    }
-
-    public function test_When_adding_a_container_Expect_get_method_return_the_exact_same_container()
-    {
-        $container = new Container();
-
-        $container->containers['foo'] = 'bar';
-
-        $this->assertTrue($container->get('foo') === 'bar');
-    }
-
-    public function test_When_set_a_container_Expect_get_method_return_the_exact_same_container()
-    {
-        $container = new Container();
-
-        $container->set('foo', 'bar');
-
-        $this->assertTrue($container->get('foo') === 'bar');
-    }
-
-    public function test_When_adding_a_Closure_container_Expect_get_method_return_the_exact_same_container()
-    {
-        $container = new Container();
-
-        $container->containers['foo'] = function () {
-            return 'bar';
-        };
-
-        $this->assertTrue($container->get('foo') instanceof Closure && call_user_func($container->get('foo')) === 'bar');
-    }
-
-    public function test_When_set_a_Closure_container_Expect_get_method_return_the_exact_same_container()
-    {
-        $container = new Container();
-
-        $container->set('foo', function () {
-            return 'bar';
-        });
-
-        $this->assertTrue($container->get('foo') instanceof Closure && call_user_func($container->get('foo')) === 'bar');
-    }
-
-    public function test_When_adding_a_Class_container_Expect_get_method_return_the_exact_same_container()
-    {
-        $container = new Container();
-
-        $container->containers['foo'] = new class {
-            public function bar()
-            {
-            }
-        };
-
-        $this->assertTrue(is_object($container->get('foo')) && method_exists($container->get('foo'), 'bar'));
-    }
-
-    public function test_When_set_a_Class_container_Expect_get_method_return_the_exact_same_container()
-    {
-        $container = new Container();
-
-        $container->set('foo', new class {
-            public function bar()
-            {
-            }
-        });
-
-        $this->assertTrue(is_object($container->get('foo')) && method_exists($container->get('foo'), 'bar'));
-    }
-
-    public function test_When_set_and_unset_a_container_Expect_has_method_return_false()
+    public function test_When_set_and_unset_a_container_Expect_has_method_return_false(): void
     {
         $container = new Container();
 
@@ -149,7 +251,7 @@ class ContainerTest extends TestCase
         $this->assertFalse($container->has('foo'));
     }
 
-    public function test_When_set_and_unset_a_container_Expect_get_method_throw_NotFoundException()
+    public function test_When_set_and_unset_a_container_Expect_get_method_throw_NotFoundException(): void
     {
         $container = new Container();
 

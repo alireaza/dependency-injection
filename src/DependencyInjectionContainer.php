@@ -2,38 +2,23 @@
 
 namespace AliReaza\DependencyInjection;
 
+use AliReaza\Container\NotFoundException;
 use Closure;
-use Psr\Container\ContainerExceptionInterface;
-use Psr\Container\NotFoundExceptionInterface;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionFunction;
+use ReflectionIntersectionType;
 use ReflectionMethod;
+use ReflectionNamedType;
+use ReflectionParameter;
+use ReflectionUnionType;
 
-/**
- * Class DependencyInjectionContainer
- *
- * @package AliReaza\DependencyInjection
- */
 class DependencyInjectionContainer extends Container
 {
-    /**
-     * @param bool $use_autowiring
-     * @param array $resolved
-     */
     public function __construct(private bool $use_autowiring = false, private array $resolved = [])
     {
     }
 
-    /**
-     * @param string $id
-     * @param array $parameters
-     *
-     * @return mixed
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     * @throws ReflectionException
-     */
     public function resolve(string $id, array $parameters = []): mixed
     {
         if (array_key_exists($id, $this->resolved)) {
@@ -43,15 +28,6 @@ class DependencyInjectionContainer extends Container
         return $this->resolved[$id] = $this->make($id, $parameters);
     }
 
-    /**
-     * @param string $id
-     * @param array $parameters
-     *
-     * @return mixed
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     * @throws ReflectionException
-     */
     public function make(string $id, array $parameters = []): mixed
     {
         if ($id === static::class) {
@@ -67,15 +43,6 @@ class DependencyInjectionContainer extends Container
         return $this->call($entry, $parameters);
     }
 
-    /**
-     * @param mixed $entry
-     * @param array $parameters
-     *
-     * @return mixed
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     * @throws ReflectionException
-     */
     public function call(mixed $entry, array $parameters = []): mixed
     {
         if ($entry instanceof Closure) {
@@ -83,36 +50,12 @@ class DependencyInjectionContainer extends Container
         }
 
         try {
-            if (is_array($entry)) {
-                $method = $entry[1] ?? '__construct';
-                $entry = $entry[0];
-
-                $classParameters = [];
-                if (is_array($entry)) {
-                    $classParameters = $entry[1] ?? [];
-                    $entry = $entry[0];
-                }
-
-                $object = $this->callClass($entry, $classParameters);
-
-                return $this->callMethod($object, $method, $parameters);
-            }
-
-            return $this->callClass($entry, $parameters);
+            return $this->newInstanceEntry($entry, $parameters);
         } catch (ReflectionException) {
             return $entry;
         }
     }
 
-    /**
-     * @param Closure $entry
-     * @param array $parameters
-     *
-     * @return mixed
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     * @throws ReflectionException
-     */
     private function callFunction(Closure $entry, array $parameters = []): mixed
     {
         $reflector = new ReflectionFunction($entry);
@@ -122,15 +65,98 @@ class DependencyInjectionContainer extends Container
         return $reflector->invokeArgs($dependencies);
     }
 
-    /**
-     * @param string|object $entry
-     * @param array $parameters
-     *
-     * @return string|object
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     * @throws ReflectionException
-     */
+    private function dependencies(ReflectionFunction|ReflectionMethod $reflector, array $parameters = []): array
+    {
+        $dependencies = [];
+
+        $reflection_parameters = $reflector->getParameters();
+        foreach ($reflection_parameters as $reflection_parameter) {
+            $parameter_name = $reflection_parameter->getName();
+            $parameter_name_with_dollar = '$' . $parameter_name;
+
+            if (array_key_exists($parameter_name_with_dollar, $parameters)) {
+                $dependencies[] = $parameters[$parameter_name_with_dollar];
+            } else if (array_key_exists($parameter_name, $parameters)) {
+                $dependencies[] = $parameters[$parameter_name];
+            } else if (array_key_exists($reflection_parameter->getPosition(), $parameters)) {
+                $dependencies[] = $parameters[$reflection_parameter->getPosition()];
+            } else if ($reflection_parameter->isDefaultValueAvailable()) {
+                $dependencies[] = $reflection_parameter->getDefaultValue();
+            } else {
+                $parameter_type = $reflection_parameter->getType();
+
+                $dependencies[] = is_null($parameter_type)
+                    ? $this->resolve($parameter_name_with_dollar)
+                    : $this->resolveParameterWithType($reflection_parameter);
+            }
+        }
+
+        return $dependencies;
+    }
+
+    private function resolveParameterWithType(ReflectionParameter $reflection_parameter): mixed
+    {
+        $types = $this->getParameterAllTypes($reflection_parameter);
+
+        $exception = null;
+
+        foreach ($types as $type) {
+            $name = $type instanceof ReflectionNamedType ? $type->getName() : (string)$type;
+
+            try {
+                return $this->resolve($name);
+            } catch (NotFoundException $exception) {
+                continue;
+            }
+        }
+
+        throw $exception;
+    }
+
+    private function getParameterAllTypes(ReflectionParameter $reflection_parameter): array
+    {
+        $reflection_type = $reflection_parameter->getType();
+
+        if (is_null($reflection_type)) {
+            return [];
+        }
+
+        if ($reflection_type instanceof ReflectionUnionType || $reflection_type instanceof ReflectionIntersectionType) {
+            return $reflection_type->getTypes();
+        }
+
+        return [$reflection_type];
+    }
+
+    private function newInstanceEntry(mixed $entry, array $parameters = []): mixed
+    {
+        if ($this->isValidCallableEntry($entry)) {
+            return $this->callClassWithMethod($entry, $parameters);
+        }
+
+        return $this->callClass($entry, $parameters);
+    }
+
+    private function isValidCallableEntry(mixed $entry): bool
+    {
+        return is_array($entry) && !empty($entry) && !empty($entry[0]) && (is_string($entry[0]) || is_array($entry[0]));
+    }
+
+    private function callClassWithMethod(array $entry, array $parameters = []): mixed
+    {
+        $method = $entry[1] ?? '__construct';
+        $_entry = $entry[0];
+
+        $class_parameters = [];
+        if (is_array($_entry)) {
+            $class_parameters = $_entry[1] ?? [];
+            $_entry = $_entry[0];
+        }
+
+        $object = $this->callClass($_entry, $class_parameters);
+        return $this->callMethod($object, $method, $parameters);
+    }
+
     private function callClass(string|object $entry, array $parameters = []): string|object
     {
         $reflector = new ReflectionClass($entry);
@@ -150,16 +176,6 @@ class DependencyInjectionContainer extends Container
         return $entry;
     }
 
-    /**
-     * @param object $object
-     * @param string $method
-     * @param array $parameters
-     *
-     * @return mixed
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     * @throws ReflectionException
-     */
     private function callMethod(object $object, string $method, array $parameters = []): mixed
     {
         $reflector = new ReflectionClass($object);
@@ -170,52 +186,8 @@ class DependencyInjectionContainer extends Container
         return $method->invokeArgs($object, $dependencies);
     }
 
-    /**
-     * @param ReflectionFunction|ReflectionMethod $reflector
-     * @param array $parameters
-     *
-     * @return array
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     * @throws ReflectionException
-     */
-    private function dependencies(ReflectionFunction|ReflectionMethod $reflector, array $parameters = []): array
+    public function useAutowiring(bool $use_autowiring = true): void
     {
-        $dependencies = [];
-
-        $reflectionParameters = $reflector->getParameters();
-        foreach ($reflectionParameters as $reflectionParameter) {
-            $parameter_name = '$' . $reflectionParameter->getName();
-
-            if (array_key_exists($parameter_name, $parameters)) {
-                $dependencies[] = $parameters[$parameter_name];
-            } else if (array_key_exists($reflectionParameter->getName(), $parameters)) {
-                $dependencies[] = $parameters[$reflectionParameter->getName()];
-            } else if (array_key_exists($reflectionParameter->getPosition(), $parameters)) {
-                $dependencies[] = $parameters[$reflectionParameter->getPosition()];
-            } else if ($reflectionParameter->isDefaultValueAvailable()) {
-                $dependencies[] = $reflectionParameter->getDefaultValue();
-            } else {
-                $parameter_type = $reflectionParameter->getType();
-
-                if (is_null($parameter_type)) {
-                    $id = $parameter_name;
-                } else {
-                    $id = $parameter_type->getName();
-                }
-
-                $dependencies[] = $this->resolve($id);
-            }
-        }
-
-        return $dependencies;
-    }
-
-    /**
-     * @param bool $bool
-     */
-    public function useAutowiring(bool $bool = true): void
-    {
-        $this->use_autowiring = $bool;
+        $this->use_autowiring = $use_autowiring;
     }
 }
